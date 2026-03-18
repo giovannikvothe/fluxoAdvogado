@@ -1,12 +1,34 @@
-﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { Select } from "../../components/ui/Select";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { TextArea } from "../../components/ui/TextArea";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { StatusBadge } from "../../components/ui/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Textarea } from "../../components/ui/textarea";
 import {
   atualizarObservacoesDemanda,
   atualizarPrazoEtapaDemanda,
@@ -15,15 +37,20 @@ import {
   finalizarDemanda,
 } from "../../lib/api";
 import { formatDate, formatDateTime, toDateInputValue } from "../../lib/format";
-import { STATUS_ETAPA_LABEL, STATUS_ETAPA_OPTIONS, type StatusEtapaDemanda } from "../../types/domain";
+import {
+  STATUS_ETAPA_LABEL,
+  STATUS_ETAPA_OPTIONS,
+  type StatusEtapaDemanda,
+} from "../../types/domain";
 import { canTransitionStage, hasMandatoryPendingStages } from "../../utils/statusRules";
 
 export function DemandaDetalhePage() {
   const { demandaId } = useParams<{ demandaId: string }>();
   const queryClient = useQueryClient();
-  const [feedback, setFeedback] = useState<{ message: string; variant: "error" | "success" | "info" } | null>(
-    null,
-  );
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    variant: "error" | "success" | "info";
+  } | null>(null);
 
   const [draftStatus, setDraftStatus] = useState<Record<string, StatusEtapaDemanda>>({});
   const [draftPrazo, setDraftPrazo] = useState<Record<string, string>>({});
@@ -71,7 +98,11 @@ export function DemandaDetalhePage() {
   };
 
   const atualizarStatusMutation = useMutation({
-    mutationFn: (args: { etapaId: string; novoStatus: StatusEtapaDemanda; observacoes: string }) =>
+    mutationFn: (args: {
+      etapaId: string;
+      novoStatus: StatusEtapaDemanda;
+      observacoes: string;
+    }) =>
       atualizarStatusEtapaDemanda({
         etapa_demanda_id: args.etapaId,
         novo_status: args.novoStatus,
@@ -83,7 +114,10 @@ export function DemandaDetalhePage() {
     },
     onError: (error) =>
       setFeedback({
-        message: error instanceof Error ? error.message : "Falha ao atualizar status da etapa.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Falha ao atualizar status da etapa.",
         variant: "error",
       }),
   });
@@ -115,7 +149,10 @@ export function DemandaDetalhePage() {
     },
     onError: (error) =>
       setFeedback({
-        message: error instanceof Error ? error.message : "Falha ao atualizar observacoes da demanda.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Falha ao atualizar observacoes da demanda.",
         variant: "error",
       }),
   });
@@ -143,127 +180,188 @@ export function DemandaDetalhePage() {
     () =>
       demanda
         ? !hasMandatoryPendingStages(
-            demanda.etapas_demanda.map((etapa) => ({ obrigatoria: etapa.obrigatoria, status: etapa.status })),
+            demanda.etapas_demanda.map((etapa) => ({
+              obrigatoria: etapa.obrigatoria,
+              status: etapa.status,
+            }))
           )
         : false,
-    [demanda],
+    [demanda]
   );
 
   if (demandaQuery.isLoading) {
-    return <Card title="Carregando demanda..." />;
+    return (
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Carregando demanda...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
   }
 
   if (!demanda) {
-    return <Card title="Demanda nao encontrada" subtitle="Verifique se o registro ainda existe." />;
+    return (
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Demanda nao encontrada</CardTitle>
+          <CardDescription>Verifique se o registro ainda existe.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
-    <div className="page-grid">
-      <Card
-        title={demanda.titulo}
-        subtitle={`Template: ${demanda.template?.nome ?? "-"} | Processo: ${demanda.numero_processo ?? "-"}`}
-        actions={
+    <div className="grid gap-5">
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+          <div className="space-y-1">
+            <CardTitle>{demanda.titulo}</CardTitle>
+            <CardDescription>
+              Template: {demanda.template?.nome ?? "-"} | Processo:{" "}
+              {demanda.numero_processo ?? "-"}
+            </CardDescription>
+          </div>
           <Button
-            variant="primary"
             onClick={() => finalizarMutation.mutate()}
-            disabled={!podeFinalizar || demanda.status === "finalizada" || demanda.status === "cancelada"}
-            loading={finalizarMutation.isPending}
+            disabled={
+              !podeFinalizar ||
+              demanda.status === "finalizada" ||
+              demanda.status === "cancelada" ||
+              finalizarMutation.isPending
+            }
           >
-            Finalizar demanda
+            {finalizarMutation.isPending ? "Processando..." : "Finalizar demanda"}
           </Button>
-        }
-      >
-        <div className="detail-grid">
-          <div>
-            <strong>Status</strong>
-            <div>
+        </CardHeader>
+
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border border-border/75 bg-background/60 p-3">
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Status
+              </p>
               <StatusBadge status={demanda.status} />
             </div>
+            <div className="rounded-lg border border-border/75 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Advogado</p>
+              <p className="text-sm font-semibold">{demanda.advogado?.nome ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-border/75 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</p>
+              <p className="text-sm font-semibold">{demanda.cliente?.nome ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-border/75 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Prazo final</p>
+              <p className="text-sm font-semibold">{formatDate(demanda.prazo_final)}</p>
+            </div>
           </div>
-          <div>
-            <strong>Advogado</strong>
-            <p>{demanda.advogado?.nome ?? "-"}</p>
-          </div>
-          <div>
-            <strong>Cliente</strong>
-            <p>{demanda.cliente?.nome ?? "-"}</p>
-          </div>
-          <div>
-            <strong>Prazo final</strong>
-            <p>{formatDate(demanda.prazo_final)}</p>
-          </div>
-        </div>
 
-        {!podeFinalizar && <Alert message="Existem etapas obrigatorias pendentes." variant="info" />}
-        <Alert message={feedback?.message} variant={feedback?.variant} />
+          {!podeFinalizar ? (
+            <Alert>
+              <AlertTitle>Atencao</AlertTitle>
+              <AlertDescription>
+                Existem etapas obrigatorias pendentes.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
-        <div className="form-grid">
-          <TextArea
-            label="Observacoes gerais da demanda"
-            rows={3}
-            value={draftObservacoesDemanda}
-            onChange={(event) => setDraftObservacoesDemanda(event.target.value)}
-          />
-          <Button variant="secondary" loading={atualizarObservacoesMutation.isPending} onClick={() => atualizarObservacoesMutation.mutate()}>
-            Salvar observacoes da demanda
-          </Button>
-        </div>
+          {feedback ? (
+            <Alert variant={feedback.variant === "error" ? "destructive" : "default"}>
+              <AlertTitle>{feedback.variant === "error" ? "Falha" : "Atualizacao"}</AlertTitle>
+              <AlertDescription>{feedback.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3">
+            <Label htmlFor="demanda-observacoes-gerais">
+              Observacoes gerais da demanda
+            </Label>
+            <Textarea
+              id="demanda-observacoes-gerais"
+              rows={3}
+              value={draftObservacoesDemanda}
+              onChange={(event) => setDraftObservacoesDemanda(event.target.value)}
+            />
+            <div>
+              <Button
+                variant="secondary"
+                disabled={atualizarObservacoesMutation.isPending}
+                onClick={() => atualizarObservacoesMutation.mutate()}
+              >
+                {atualizarObservacoesMutation.isPending
+                  ? "Processando..."
+                  : "Salvar observacoes da demanda"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
-      <Card title="Checklist operacional">
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Ordem</th>
-                <th>Etapa</th>
-                <th>Status</th>
-                <th>Prazo</th>
-                <th>Observacoes</th>
-                <th>Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Checklist operacional</CardTitle>
+          <CardDescription>
+            Atualize status, prazo e observacoes de cada etapa.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[70px]">Ordem</TableHead>
+                <TableHead>Etapa</TableHead>
+                <TableHead className="min-w-[190px]">Status</TableHead>
+                <TableHead className="min-w-[160px]">Prazo</TableHead>
+                <TableHead className="min-w-[220px]">Observacoes</TableHead>
+                <TableHead className="w-[160px]">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {demanda.etapas_demanda.map((etapa) => {
                 const statusSelecionado = draftStatus[etapa.id] ?? etapa.status;
                 const prazoSelecionado = draftPrazo[etapa.id] ?? "";
                 const observacoesSelecionadas = draftObservacoesEtapa[etapa.id] ?? "";
 
                 return (
-                  <tr key={etapa.id}>
-                    <td>{etapa.ordem}</td>
-                    <td>
-                      <strong>{etapa.nome}</strong>
-                      <br />
-                      {etapa.descricao || "-"}
-                      <br />
-                      {etapa.obrigatoria ? "Obrigatoria" : "Opcional"}
-                    </td>
-                    <td>
+                  <TableRow key={etapa.id}>
+                    <TableCell>{etapa.ordem}</TableCell>
+                    <TableCell>
+                      <p className="font-semibold">{etapa.nome}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {etapa.descricao || "-"}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-muted-foreground">
+                        {etapa.obrigatoria ? "Obrigatoria" : "Opcional"}
+                      </p>
+                    </TableCell>
+                    <TableCell>
                       <Select
-                        label="Status"
                         value={statusSelecionado}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setDraftStatus((current) => ({
                             ...current,
-                            [etapa.id]: event.target.value as StatusEtapaDemanda,
+                            [etapa.id]: value as StatusEtapaDemanda,
                           }))
                         }
                       >
-                        {STATUS_ETAPA_OPTIONS.map((statusOption) => (
-                          <option
-                            key={statusOption}
-                            value={statusOption}
-                            disabled={!canTransitionStage(etapa.status, statusOption)}
-                          >
-                            {STATUS_ETAPA_LABEL[statusOption]}
-                          </option>
-                        ))}
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_ETAPA_OPTIONS.map((statusOption) => (
+                            <SelectItem
+                              key={statusOption}
+                              value={statusOption}
+                              disabled={!canTransitionStage(etapa.status, statusOption)}
+                            >
+                              {STATUS_ETAPA_LABEL[statusOption]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
-                    </td>
-                    <td>
-                      <input
-                        className="input"
+                    </TableCell>
+                    <TableCell>
+                      <Input
                         type="date"
                         value={prazoSelecionado}
                         onChange={(event) =>
@@ -273,10 +371,9 @@ export function DemandaDetalhePage() {
                           }))
                         }
                       />
-                    </td>
-                    <td>
-                      <textarea
-                        className="input textarea"
+                    </TableCell>
+                    <TableCell>
+                      <Textarea
                         rows={2}
                         value={observacoesSelecionadas}
                         onChange={(event) =>
@@ -286,11 +383,13 @@ export function DemandaDetalhePage() {
                           }))
                         }
                       />
-                    </td>
-                    <td>
-                      <div className="actions-col">
+                    </TableCell>
+                    <TableCell>
+                      <div className="grid gap-2">
                         <Button
                           variant="secondary"
+                          size="sm"
+                          disabled={atualizarStatusMutation.isPending}
                           onClick={() =>
                             atualizarStatusMutation.mutate({
                               etapaId: etapa.id,
@@ -298,48 +397,64 @@ export function DemandaDetalhePage() {
                               observacoes: observacoesSelecionadas,
                             })
                           }
-                          loading={atualizarStatusMutation.isPending}
                         >
-                          Salvar status
+                          {atualizarStatusMutation.isPending
+                            ? "Processando..."
+                            : "Salvar status"}
                         </Button>
                         <Button
                           variant="ghost"
+                          size="sm"
+                          disabled={atualizarPrazoMutation.isPending}
                           onClick={() =>
                             atualizarPrazoMutation.mutate({
                               etapaId: etapa.id,
                               prazo: prazoSelecionado || null,
                             })
                           }
-                          loading={atualizarPrazoMutation.isPending}
                         >
-                          Salvar prazo
+                          {atualizarPrazoMutation.isPending
+                            ? "Processando..."
+                            : "Salvar prazo"}
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
 
-      <Card title="Historico">
-        <div className="timeline">
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Historico</CardTitle>
+          <CardDescription>Eventos recentes da demanda.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           {demanda.historico.map((registro) => (
-            <article key={registro.id} className="timeline-item">
-              <header>
-                <strong>{registro.acao}</strong>
-                <span>{formatDateTime(registro.data)}</span>
+            <article
+              key={registro.id}
+              className="rounded-lg border border-border/80 bg-background/60 p-4"
+            >
+              <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <strong className="font-display text-sm">{registro.acao}</strong>
+                <span className="text-xs text-muted-foreground">
+                  {formatDateTime(registro.data)}
+                </span>
               </header>
-              <p>{registro.descricao}</p>
+              <p className="text-sm text-muted-foreground">{registro.descricao}</p>
             </article>
           ))}
 
-          {!demanda.historico.length && <p>Sem eventos registrados ate o momento.</p>}
-        </div>
+          {!demanda.historico.length ? (
+            <p className="text-sm text-muted-foreground">
+              Sem eventos registrados ate o momento.
+            </p>
+          ) : null}
+        </CardContent>
       </Card>
     </div>
   );
 }
-

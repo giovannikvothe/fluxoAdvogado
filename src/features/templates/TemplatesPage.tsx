@@ -1,15 +1,37 @@
-﻿import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { Input } from "../../components/ui/Input";
-import { Select } from "../../components/ui/Select";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { TextArea } from "../../components/ui/TextArea";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { StatusBadge } from "../../components/ui/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Textarea } from "../../components/ui/textarea";
 import {
   alternarTemplateAtivo,
   duplicarTemplate,
@@ -49,13 +71,30 @@ const EMPTY_TEMPLATE: TemplateFormValues = {
   observacoes: "",
 };
 
+const EMPTY_ETAPA: EtapaFormValues = {
+  nome: "",
+  descricao: "",
+  ordem: 1,
+  obrigatoria: true,
+  prazo_padrao_dias: "",
+  observacoes: "",
+};
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+  return <p className="text-xs font-medium text-destructive">{message}</p>;
+}
+
 export function TemplatesPage() {
   const queryClient = useQueryClient();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [editingEtapaId, setEditingEtapaId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ message: string; variant: "error" | "success" | "info" } | null>(
-    null,
-  );
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    variant: "error" | "success" | "info";
+  } | null>(null);
 
   const templateForm = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
@@ -64,14 +103,7 @@ export function TemplatesPage() {
 
   const etapaForm = useForm<EtapaFormValues>({
     resolver: zodResolver(etapaSchema),
-    defaultValues: {
-      nome: "",
-      descricao: "",
-      ordem: 1,
-      obrigatoria: true,
-      prazo_padrao_dias: "",
-      observacoes: "",
-    },
+    defaultValues: EMPTY_ETAPA,
   });
 
   const templatesQuery = useQuery({
@@ -85,21 +117,15 @@ export function TemplatesPage() {
   });
 
   const selectedTemplate = useMemo(
-    () => templatesQuery.data?.find((template) => template.id === selectedTemplateId) ?? null,
-    [selectedTemplateId, templatesQuery.data],
+    () =>
+      templatesQuery.data?.find((template) => template.id === selectedTemplateId) ?? null,
+    [selectedTemplateId, templatesQuery.data]
   );
 
   useEffect(() => {
     if (!selectedTemplate) {
       templateForm.reset(EMPTY_TEMPLATE);
-      etapaForm.reset({
-        nome: "",
-        descricao: "",
-        ordem: 1,
-        obrigatoria: true,
-        prazo_padrao_dias: "",
-        observacoes: "",
-      });
+      etapaForm.reset(EMPTY_ETAPA);
       setEditingEtapaId(null);
       return;
     }
@@ -113,12 +139,8 @@ export function TemplatesPage() {
     });
 
     etapaForm.reset({
-      nome: "",
-      descricao: "",
+      ...EMPTY_ETAPA,
       ordem: selectedTemplate.etapas_template.length + 1,
-      obrigatoria: true,
-      prazo_padrao_dias: "",
-      observacoes: "",
     });
     setEditingEtapaId(null);
   }, [etapaForm, selectedTemplate, templateForm]);
@@ -146,7 +168,8 @@ export function TemplatesPage() {
   });
 
   const toggleTemplateMutation = useMutation({
-    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => alternarTemplateAtivo(id, ativo),
+    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) =>
+      alternarTemplateAtivo(id, ativo),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["templates"] });
     },
@@ -187,12 +210,8 @@ export function TemplatesPage() {
       setFeedback({ message: "Etapa salva com sucesso.", variant: "success" });
       setEditingEtapaId(null);
       etapaForm.reset({
-        nome: "",
-        descricao: "",
+        ...EMPTY_ETAPA,
         ordem: (selectedTemplate?.etapas_template.length ?? 0) + 1,
-        obrigatoria: true,
-        prazo_padrao_dias: "",
-        observacoes: "",
       });
       void queryClient.invalidateQueries({ queryKey: ["templates"] });
     },
@@ -211,12 +230,16 @@ export function TemplatesPage() {
   });
 
   return (
-    <div className="page-grid">
-      <Card
-        title={selectedTemplateId ? "Editar template" : "Novo template"}
-        subtitle="Defina fluxo, tipo de servico e advogado vinculado."
-        actions={
-          selectedTemplateId ? (
+    <div className="grid gap-5">
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <CardTitle>{selectedTemplateId ? "Editar template" : "Novo template"}</CardTitle>
+            <CardDescription>
+              Defina fluxo, tipo de servico e advogado vinculado.
+            </CardDescription>
+          </div>
+          {selectedTemplateId ? (
             <Button
               variant="secondary"
               onClick={() => {
@@ -226,179 +249,308 @@ export function TemplatesPage() {
             >
               Novo template
             </Button>
-          ) : undefined
-        }
-      >
-        <form className="form-grid three-columns" onSubmit={templateForm.handleSubmit((v) => salvarTemplateMutation.mutate(v))}>
-          <Input label="Nome do fluxo" error={templateForm.formState.errors.nome?.message} {...templateForm.register("nome")} />
-          <Input
-            label="Tipo de servico"
-            error={templateForm.formState.errors.tipo_servico?.message}
-            {...templateForm.register("tipo_servico")}
-          />
-          <Select label="Advogado (opcional)" {...templateForm.register("advogado_id")}>
-            <option value="">Template generico</option>
-            {advogadosQuery.data?.map((advogado) => (
-              <option key={advogado.id} value={advogado.id}>
-                {advogado.nome}
-              </option>
-            ))}
-          </Select>
+          ) : null}
+        </CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-4"
+            onSubmit={templateForm.handleSubmit((values) =>
+              salvarTemplateMutation.mutate(values)
+            )}
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="template-nome">Nome do fluxo</Label>
+                <Input id="template-nome" {...templateForm.register("nome")} />
+                <FieldError message={templateForm.formState.errors.nome?.message} />
+              </div>
 
-          <TextArea label="Observacoes internas" rows={2} {...templateForm.register("observacoes")} />
+              <div className="grid gap-2">
+                <Label htmlFor="template-tipo">Tipo de servico</Label>
+                <Input id="template-tipo" {...templateForm.register("tipo_servico")} />
+                <FieldError message={templateForm.formState.errors.tipo_servico?.message} />
+              </div>
 
-          <label className="field-inline">
-            <input type="checkbox" {...templateForm.register("ativo")} />
-            <span>Template ativo</span>
-          </label>
+              <Controller
+                control={templateForm.control}
+                name="advogado_id"
+                render={({ field }) => (
+                  <div className="grid gap-2">
+                    <Label>Advogado (opcional)</Label>
+                    <Select value={field.value || "generic"} onValueChange={(value) => field.onChange(value === "generic" ? "" : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Template generico" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="generic">Template generico</SelectItem>
+                        {advogadosQuery.data?.map((advogado) => (
+                          <SelectItem key={advogado.id} value={advogado.id}>
+                            {advogado.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              />
 
-          <Alert message={feedback?.message} variant={feedback?.variant} />
+              <div className="grid gap-2 md:col-span-2 xl:col-span-3">
+                <Label htmlFor="template-observacoes">Observacoes internas</Label>
+                <Textarea
+                  id="template-observacoes"
+                  rows={2}
+                  {...templateForm.register("observacoes")}
+                />
+              </div>
 
-          <div className="actions-row">
-            <Button type="submit" loading={salvarTemplateMutation.isPending}>
-              {selectedTemplateId ? "Salvar alteracoes" : "Criar template"}
-            </Button>
-          </div>
-        </form>
+              <Controller
+                control={templateForm.control}
+                name="ativo"
+                render={({ field }) => (
+                  <label className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-2">
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                    />
+                    <span className="text-sm font-medium">Template ativo</span>
+                  </label>
+                )}
+              />
+            </div>
+
+            {feedback ? (
+              <Alert variant={feedback.variant === "error" ? "destructive" : "default"}>
+                <AlertTitle>{feedback.variant === "error" ? "Falha" : "Atualizacao"}</AlertTitle>
+                <AlertDescription>{feedback.message}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div>
+              <Button type="submit" disabled={salvarTemplateMutation.isPending}>
+                {salvarTemplateMutation.isPending
+                  ? "Processando..."
+                  : selectedTemplateId
+                    ? "Salvar alteracoes"
+                    : "Criar template"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
       </Card>
 
-      <Card title="Templates cadastrados">
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Fluxo</th>
-                <th>Tipo</th>
-                <th>Advogado</th>
-                <th>Status</th>
-                <th>Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Templates cadastrados</CardTitle>
+          <CardDescription>Selecione um template para editar e gerenciar etapas.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fluxo</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Advogado</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[250px]">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {templatesQuery.data?.map((template) => {
-                const advogado = advogadosQuery.data?.find((item) => item.id === template.advogado_id);
+                const advogado = advogadosQuery.data?.find(
+                  (item) => item.id === template.advogado_id
+                );
 
                 return (
-                  <tr key={template.id} className={template.id === selectedTemplateId ? "is-selected" : ""}>
-                    <td>{template.nome}</td>
-                    <td>{template.tipo_servico}</td>
-                    <td>{advogado?.nome ?? "Generico"}</td>
-                    <td>
+                  <TableRow
+                    key={template.id}
+                    className={template.id === selectedTemplateId ? "bg-muted/35" : ""}
+                  >
+                    <TableCell className="font-semibold">{template.nome}</TableCell>
+                    <TableCell>{template.tipo_servico}</TableCell>
+                    <TableCell>{advogado?.nome ?? "Generico"}</TableCell>
+                    <TableCell>
                       <StatusBadge status={template.ativo ? "em_andamento" : "cancelada"} />
-                    </td>
-                    <td>
-                      <div className="actions-row">
-                        <Button variant="secondary" onClick={() => setSelectedTemplateId(template.id)}>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setSelectedTemplateId(template.id)}
+                        >
                           Editar
                         </Button>
                         <Button
-                          variant={template.ativo ? "danger" : "primary"}
+                          variant={template.ativo ? "destructive" : "default"}
+                          size="sm"
                           onClick={() =>
-                            toggleTemplateMutation.mutate({ id: template.id, ativo: !template.ativo })
+                            toggleTemplateMutation.mutate({
+                              id: template.id,
+                              ativo: !template.ativo,
+                            })
                           }
                         >
                           {template.ativo ? "Inativar" : "Ativar"}
                         </Button>
                         <Button
                           variant="ghost"
+                          size="sm"
+                          disabled={duplicarTemplateMutation.isPending}
                           onClick={() => duplicarTemplateMutation.mutate(template.id)}
-                          loading={duplicarTemplateMutation.isPending}
                         >
-                          Duplicar
+                          {duplicarTemplateMutation.isPending ? "Processando..." : "Duplicar"}
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
 
-              {!templatesQuery.data?.length && (
-                <tr>
-                  <td colSpan={5}>Nenhum template cadastrado.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              {!templatesQuery.data?.length ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                    Nenhum template cadastrado.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
 
-      <Card
-        title="Etapas do template"
-        subtitle={
-          selectedTemplate
-            ? `Organize as etapas de "${selectedTemplate.nome}" com ordem e obrigatoriedade.`
-            : "Selecione um template para cadastrar etapas."
-        }
-      >
-        {!selectedTemplate && <p>Escolha um template na tabela acima para continuar.</p>}
-
-        {selectedTemplate && (
-          <>
-            <form
-              className="form-grid three-columns"
-              onSubmit={etapaForm.handleSubmit((values) => salvarEtapaMutation.mutate(values))}
-            >
-              <Input label="Nome da etapa" error={etapaForm.formState.errors.nome?.message} {...etapaForm.register("nome")} />
-              <Input label="Ordem" type="number" error={etapaForm.formState.errors.ordem?.message} {...etapaForm.register("ordem", { valueAsNumber: true })} />
-              <Input label="Prazo padrao (dias)" type="number" {...etapaForm.register("prazo_padrao_dias")} />
-              <TextArea label="Descricao" rows={2} {...etapaForm.register("descricao")} />
-              <TextArea label="Observacoes" rows={2} {...etapaForm.register("observacoes")} />
-              <label className="field-inline">
-                <input type="checkbox" {...etapaForm.register("obrigatoria")} />
-                <span>Etapa obrigatoria</span>
-              </label>
-
-              <div className="actions-row">
-                <Button type="submit" loading={salvarEtapaMutation.isPending}>
-                  {editingEtapaId ? "Salvar etapa" : "Adicionar etapa"}
-                </Button>
-                {editingEtapaId && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setEditingEtapaId(null);
-                      etapaForm.reset({
-                        nome: "",
-                        descricao: "",
-                        ordem: selectedTemplate.etapas_template.length + 1,
-                        obrigatoria: true,
-                        prazo_padrao_dias: "",
-                        observacoes: "",
-                      });
-                    }}
-                  >
-                    Cancelar
-                  </Button>
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Etapas do template</CardTitle>
+          <CardDescription>
+            {selectedTemplate
+              ? `Organize as etapas de "${selectedTemplate.nome}" com ordem e obrigatoriedade.`
+              : "Selecione um template para cadastrar etapas."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {!selectedTemplate ? (
+            <p className="text-sm text-muted-foreground">
+              Escolha um template na tabela acima para continuar.
+            </p>
+          ) : (
+            <>
+              <form
+                className="grid gap-4"
+                onSubmit={etapaForm.handleSubmit((values) =>
+                  salvarEtapaMutation.mutate(values)
                 )}
-              </div>
-            </form>
+              >
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="etapa-nome">Nome da etapa</Label>
+                    <Input id="etapa-nome" {...etapaForm.register("nome")} />
+                    <FieldError message={etapaForm.formState.errors.nome?.message} />
+                  </div>
 
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Ordem</th>
-                    <th>Etapa</th>
-                    <th>Obrigatoria</th>
-                    <th>Prazo</th>
-                    <th>Acoes</th>
-                  </tr>
-                </thead>
-                <tbody>
+                  <div className="grid gap-2">
+                    <Label htmlFor="etapa-ordem">Ordem</Label>
+                    <Input
+                      id="etapa-ordem"
+                      type="number"
+                      {...etapaForm.register("ordem", { valueAsNumber: true })}
+                    />
+                    <FieldError message={etapaForm.formState.errors.ordem?.message} />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="etapa-prazo">Prazo padrao (dias)</Label>
+                    <Input
+                      id="etapa-prazo"
+                      type="number"
+                      {...etapaForm.register("prazo_padrao_dias")}
+                    />
+                  </div>
+
+                  <div className="grid gap-2 md:col-span-2 xl:col-span-3">
+                    <Label htmlFor="etapa-descricao">Descricao</Label>
+                    <Textarea
+                      id="etapa-descricao"
+                      rows={2}
+                      {...etapaForm.register("descricao")}
+                    />
+                  </div>
+
+                  <div className="grid gap-2 md:col-span-2 xl:col-span-3">
+                    <Label htmlFor="etapa-observacoes">Observacoes</Label>
+                    <Textarea
+                      id="etapa-observacoes"
+                      rows={2}
+                      {...etapaForm.register("observacoes")}
+                    />
+                  </div>
+
+                  <Controller
+                    control={etapaForm.control}
+                    name="obrigatoria"
+                    render={({ field }) => (
+                      <label className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-2">
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                        />
+                        <span className="text-sm font-medium">Etapa obrigatoria</span>
+                      </label>
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={salvarEtapaMutation.isPending}>
+                    {salvarEtapaMutation.isPending
+                      ? "Processando..."
+                      : editingEtapaId
+                        ? "Salvar etapa"
+                        : "Adicionar etapa"}
+                  </Button>
+                  {editingEtapaId ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingEtapaId(null);
+                        etapaForm.reset({
+                          ...EMPTY_ETAPA,
+                          ordem: selectedTemplate.etapas_template.length + 1,
+                        });
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  ) : null}
+                </div>
+              </form>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[70px]">Ordem</TableHead>
+                    <TableHead>Etapa</TableHead>
+                    <TableHead className="w-[130px]">Obrigatoria</TableHead>
+                    <TableHead className="w-[140px]">Prazo</TableHead>
+                    <TableHead className="w-[170px]">Acoes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {selectedTemplate.etapas_template.map((etapa) => (
-                    <tr key={etapa.id}>
-                      <td>{etapa.ordem}</td>
-                      <td>
-                        <strong>{etapa.nome}</strong>
-                        <br />
-                        {etapa.descricao || "-"}
-                      </td>
-                      <td>{etapa.obrigatoria ? "Sim" : "Nao"}</td>
-                      <td>{etapa.prazo_padrao_dias ?? "-"} dias</td>
-                      <td>
-                        <div className="actions-row">
+                    <TableRow key={etapa.id}>
+                      <TableCell>{etapa.ordem}</TableCell>
+                      <TableCell>
+                        <p className="font-semibold">{etapa.nome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {etapa.descricao || "-"}
+                        </p>
+                      </TableCell>
+                      <TableCell>{etapa.obrigatoria ? "Sim" : "Nao"}</TableCell>
+                      <TableCell>{etapa.prazo_padrao_dias ?? "-"} dias</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             variant="secondary"
+                            size="sm"
                             onClick={() => {
                               setEditingEtapaId(etapa.id);
                               etapaForm.reset({
@@ -406,7 +558,8 @@ export function TemplatesPage() {
                                 descricao: etapa.descricao ?? "",
                                 ordem: etapa.ordem,
                                 obrigatoria: etapa.obrigatoria,
-                                prazo_padrao_dias: etapa.prazo_padrao_dias?.toString() ?? "",
+                                prazo_padrao_dias:
+                                  etapa.prazo_padrao_dias?.toString() ?? "",
                                 observacoes: etapa.observacoes ?? "",
                               });
                             }}
@@ -414,29 +567,31 @@ export function TemplatesPage() {
                             Editar
                           </Button>
                           <Button
-                            variant="danger"
+                            variant="destructive"
+                            size="sm"
+                            disabled={removerEtapaMutation.isPending}
                             onClick={() => removerEtapaMutation.mutate(etapa.id)}
-                            loading={removerEtapaMutation.isPending}
                           >
-                            Remover
+                            {removerEtapaMutation.isPending ? "Processando..." : "Remover"}
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
 
-                  {!selectedTemplate.etapas_template.length && (
-                    <tr>
-                      <td colSpan={5}>Nenhuma etapa cadastrada para este template.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                  {!selectedTemplate.etapas_template.length ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">
+                        Nenhuma etapa cadastrada para este template.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
 }
-

@@ -1,15 +1,44 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { Select } from "../../components/ui/Select";
-import { StatusBadge } from "../../components/ui/StatusBadge";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { StatusBadge } from "../../components/ui/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { formatDate, isDemandOverdue } from "../../lib/format";
-import { listarAdvogados, listarClientes, listarDemandasComRelacoes, listarTemplatesComEtapas } from "../../lib/api";
+import {
+  listarAdvogados,
+  listarClientes,
+  listarDemandasComRelacoes,
+  listarTemplatesComEtapas,
+} from "../../lib/api";
 import type { StatusDemanda } from "../../types/domain";
 
 type AbaListagem = "ativas" | "finalizadas";
+type GenericFilterValue = "all" | string;
 
 const STATUS_FILTERS: Array<{ value: StatusDemanda | "todas"; label: string }> = [
   { value: "todas", label: "Todos status" },
@@ -24,12 +53,31 @@ function isClosedStatus(status: StatusDemanda): boolean {
   return status === "finalizada" || status === "cancelada";
 }
 
+function KpiCard(props: {
+  label: string;
+  value: number;
+  alert?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border bg-card/70 p-4 shadow-sm ${
+        props.alert ? "border-destructive/35" : "border-border/70"
+      }`}
+    >
+      <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {props.label}
+      </p>
+      <p className="font-display text-3xl font-semibold">{props.value}</p>
+    </div>
+  );
+}
+
 export function DemandasPage() {
   const [aba, setAba] = useState<AbaListagem>("ativas");
   const [statusFilter, setStatusFilter] = useState<StatusDemanda | "todas">("todas");
-  const [advogadoFilter, setAdvogadoFilter] = useState<string>("");
-  const [clienteFilter, setClienteFilter] = useState<string>("");
-  const [templateFilter, setTemplateFilter] = useState<string>("");
+  const [advogadoFilter, setAdvogadoFilter] = useState<GenericFilterValue>("all");
+  const [clienteFilter, setClienteFilter] = useState<GenericFilterValue>("all");
+  const [templateFilter, setTemplateFilter] = useState<GenericFilterValue>("all");
   const [busca, setBusca] = useState("");
 
   const demandasQuery = useQuery({
@@ -56,15 +104,15 @@ export function DemandasPage() {
         return false;
       }
 
-      if (advogadoFilter && demanda.advogado_id !== advogadoFilter) {
+      if (advogadoFilter !== "all" && demanda.advogado_id !== advogadoFilter) {
         return false;
       }
 
-      if (clienteFilter && demanda.cliente_id !== clienteFilter) {
+      if (clienteFilter !== "all" && demanda.cliente_id !== clienteFilter) {
         return false;
       }
 
-      if (templateFilter && demanda.template_id !== templateFilter) {
+      if (templateFilter !== "all" && demanda.template_id !== templateFilter) {
         return false;
       }
 
@@ -85,145 +133,197 @@ export function DemandasPage() {
 
       return searchable.includes(termoBusca);
     });
-  }, [aba, advogadoFilter, busca, clienteFilter, demandasQuery.data, statusFilter, templateFilter]);
+  }, [
+    aba,
+    advogadoFilter,
+    busca,
+    clienteFilter,
+    demandasQuery.data,
+    statusFilter,
+    templateFilter,
+  ]);
 
-  const totalAtivas = (demandasQuery.data ?? []).filter((d) => !isClosedStatus(d.status)).length;
-  const totalFinalizadas = (demandasQuery.data ?? []).filter((d) => isClosedStatus(d.status)).length;
-  const totalAtrasadas = (demandasQuery.data ?? []).filter((d) => isDemandOverdue(d.status, d.prazo_final)).length;
+  const totalAtivas = (demandasQuery.data ?? []).filter(
+    (demanda) => !isClosedStatus(demanda.status)
+  ).length;
+  const totalFinalizadas = (demandasQuery.data ?? []).filter((demanda) =>
+    isClosedStatus(demanda.status)
+  ).length;
+  const totalAtrasadas = (demandasQuery.data ?? []).filter((demanda) =>
+    isDemandOverdue(demanda.status, demanda.prazo_final)
+  ).length;
 
   return (
-    <div className="page-grid">
-      <Card
-        title="Listagem geral de demandas"
-        subtitle="Visualize ativas, finalizadas e pendencias com filtros operacionais."
-        actions={
-          <Link to="/demandas/nova">
-            <Button>Criar demanda</Button>
-          </Link>
-        }
-      >
-        <div className="kpi-grid">
-          <div className="kpi">
-            <span>Ativas</span>
-            <strong>{totalAtivas}</strong>
+    <div className="grid gap-5">
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <CardTitle>Listagem geral de demandas</CardTitle>
+            <CardDescription>
+              Visualize ativas, finalizadas e pendencias com filtros operacionais.
+            </CardDescription>
           </div>
-          <div className="kpi">
-            <span>Finalizadas</span>
-            <strong>{totalFinalizadas}</strong>
+          <Button asChild>
+            <Link to="/demandas/nova">Criar demanda</Link>
+          </Button>
+        </CardHeader>
+
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <KpiCard label="Ativas" value={totalAtivas} />
+            <KpiCard label="Finalizadas" value={totalFinalizadas} />
+            <KpiCard label="Atrasadas" value={totalAtrasadas} alert />
           </div>
-          <div className="kpi kpi-alert">
-            <span>Atrasadas</span>
-            <strong>{totalAtrasadas}</strong>
+
+          <Tabs value={aba} onValueChange={(value) => setAba(value as AbaListagem)}>
+            <TabsList className="grid w-full grid-cols-2 sm:w-[360px]">
+              <TabsTrigger value="ativas">Ativas</TabsTrigger>
+              <TabsTrigger value="finalizadas">Finalizadas</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-2 xl:col-span-2">
+              <Label htmlFor="busca-demandas">Busca textual</Label>
+              <Input
+                id="busca-demandas"
+                value={busca}
+                onChange={(event) => setBusca(event.target.value)}
+                placeholder="Titulo, cliente, processo..."
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as StatusDemanda | "todas")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTERS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Advogado</Label>
+              <Select value={advogadoFilter} onValueChange={setAdvogadoFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {advogadosQuery.data?.map((advogado) => (
+                    <SelectItem key={advogado.id} value={advogado.id}>
+                      {advogado.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Cliente</Label>
+              <Select value={clienteFilter} onValueChange={setClienteFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {clientesQuery.data?.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2 md:col-span-2 xl:col-span-1">
+              <Label>Template</Label>
+              <Select value={templateFilter} onValueChange={setTemplateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {templatesQuery.data?.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-
-        <div className="tabs">
-          <button className={aba === "ativas" ? "tab active" : "tab"} onClick={() => setAba("ativas")}>
-            Ativas
-          </button>
-          <button
-            className={aba === "finalizadas" ? "tab active" : "tab"}
-            onClick={() => setAba("finalizadas")}
-          >
-            Finalizadas
-          </button>
-        </div>
-
-        <div className="form-grid four-columns">
-          <label className="field">
-            <span>Busca textual</span>
-            <input
-              className="input"
-              value={busca}
-              onChange={(event) => setBusca(event.target.value)}
-              placeholder="Titulo, cliente, processo..."
-            />
-          </label>
-
-          <Select label="Status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusDemanda | "todas")}>
-            {STATUS_FILTERS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-
-          <Select label="Advogado" value={advogadoFilter} onChange={(event) => setAdvogadoFilter(event.target.value)}>
-            <option value="">Todos</option>
-            {advogadosQuery.data?.map((advogado) => (
-              <option key={advogado.id} value={advogado.id}>
-                {advogado.nome}
-              </option>
-            ))}
-          </Select>
-
-          <Select label="Cliente" value={clienteFilter} onChange={(event) => setClienteFilter(event.target.value)}>
-            <option value="">Todos</option>
-            {clientesQuery.data?.map((cliente) => (
-              <option key={cliente.id} value={cliente.id}>
-                {cliente.nome}
-              </option>
-            ))}
-          </Select>
-
-          <Select label="Template" value={templateFilter} onChange={(event) => setTemplateFilter(event.target.value)}>
-            <option value="">Todos</option>
-            {templatesQuery.data?.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.nome}
-              </option>
-            ))}
-          </Select>
-        </div>
+        </CardContent>
       </Card>
 
-      <Card title="Demandas">
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Titulo</th>
-                <th>Advogado</th>
-                <th>Cliente</th>
-                <th>Template</th>
-                <th>Status</th>
-                <th>Prazo final</th>
-                <th>Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Demandas</CardTitle>
+          <CardDescription>
+            Resultado da aba {aba === "ativas" ? "ativas" : "finalizadas"}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Titulo</TableHead>
+                <TableHead>Advogado</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Template</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Prazo final</TableHead>
+                <TableHead className="w-[130px]">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {demandasFiltradas.map((demanda) => (
-                <tr key={demanda.id} className={isDemandOverdue(demanda.status, demanda.prazo_final) ? "is-overdue" : ""}>
-                  <td>
-                    <strong>{demanda.titulo}</strong>
-                    <br />
-                    Processo: {demanda.numero_processo || "-"}
-                  </td>
-                  <td>{demanda.advogado?.nome ?? "-"}</td>
-                  <td>{demanda.cliente?.nome ?? "-"}</td>
-                  <td>{demanda.template?.nome ?? "-"}</td>
-                  <td>
+                <TableRow
+                  key={demanda.id}
+                  className={isDemandOverdue(demanda.status, demanda.prazo_final) ? "bg-destructive/5" : ""}
+                >
+                  <TableCell>
+                    <p className="font-semibold">{demanda.titulo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Processo: {demanda.numero_processo || "-"}
+                    </p>
+                  </TableCell>
+                  <TableCell>{demanda.advogado?.nome ?? "-"}</TableCell>
+                  <TableCell>{demanda.cliente?.nome ?? "-"}</TableCell>
+                  <TableCell>{demanda.template?.nome ?? "-"}</TableCell>
+                  <TableCell>
                     <StatusBadge status={demanda.status} />
-                  </td>
-                  <td>{formatDate(demanda.prazo_final)}</td>
-                  <td>
-                    <Link to={`/demandas/${demanda.id}`}>
-                      <Button variant="secondary">Abrir</Button>
-                    </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{formatDate(demanda.prazo_final)}</TableCell>
+                  <TableCell>
+                    <Button asChild variant="secondary" size="sm">
+                      <Link to={`/demandas/${demanda.id}`}>Abrir</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
 
-              {!demandasFiltradas.length && (
-                <tr>
-                  <td colSpan={7}>Nenhuma demanda encontrada com os filtros atuais.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              {!demandasFiltradas.length ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-20 text-center text-muted-foreground">
+                    Nenhuma demanda encontrada com os filtros atuais.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );
 }
-

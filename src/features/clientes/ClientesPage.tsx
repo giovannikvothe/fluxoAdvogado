@@ -1,13 +1,28 @@
-﻿import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { Input } from "../../components/ui/Input";
-import { TextArea } from "../../components/ui/TextArea";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Textarea } from "../../components/ui/textarea";
 import { listarClientes, salvarCliente } from "../../lib/api";
 
 const clienteSchema = z.object({
@@ -28,12 +43,20 @@ const EMPTY_CLIENTE: ClienteFormValues = {
   observacoes: "",
 };
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+  return <p className="text-xs font-medium text-destructive">{message}</p>;
+}
+
 export function ClientesPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ message: string; variant: "error" | "success" | "info" } | null>(
-    null,
-  );
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    variant: "error" | "success" | "info";
+  } | null>(null);
 
   const form = useForm<ClienteFormValues>({
     resolver: zodResolver(clienteSchema),
@@ -46,7 +69,8 @@ export function ClientesPage() {
   });
 
   const salvarMutation = useMutation({
-    mutationFn: async (values: ClienteFormValues) => salvarCliente({ ...values, id: editingId ?? undefined }),
+    mutationFn: async (values: ClienteFormValues) =>
+      salvarCliente({ ...values, id: editingId ?? undefined }),
     onSuccess: () => {
       setFeedback({ message: "Cliente salvo com sucesso.", variant: "success" });
       setEditingId(null);
@@ -61,63 +85,109 @@ export function ClientesPage() {
   });
 
   return (
-    <div className="page-grid two-columns">
-      <Card
-        title={editingId ? "Editar cliente" : "Novo cliente"}
-        subtitle="Cadastre os clientes finais para vincular aos fluxos."
-      >
-        <form className="form-grid" onSubmit={form.handleSubmit((values) => salvarMutation.mutate(values))}>
-          <Input label="Nome" error={form.formState.errors.nome?.message} {...form.register("nome")} />
-          <Input label="Documento" {...form.register("documento")} />
-          <Input label="Telefone" {...form.register("telefone")} />
-          <Input label="E-mail" error={form.formState.errors.email?.message} {...form.register("email")} />
-          <TextArea label="Observacoes" rows={3} {...form.register("observacoes")} />
+    <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>{editingId ? "Editar cliente" : "Novo cliente"}</CardTitle>
+          <CardDescription>
+            Cadastre os clientes finais para vincular aos fluxos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-4"
+            onSubmit={form.handleSubmit((values) => salvarMutation.mutate(values))}
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="cliente-nome">Nome</Label>
+              <Input id="cliente-nome" {...form.register("nome")} />
+              <FieldError message={form.formState.errors.nome?.message} />
+            </div>
 
-          <Alert message={feedback?.message} variant={feedback?.variant} />
+            <div className="grid gap-2">
+              <Label htmlFor="cliente-documento">Documento</Label>
+              <Input id="cliente-documento" {...form.register("documento")} />
+            </div>
 
-          <div className="actions-row">
-            <Button type="submit" loading={salvarMutation.isPending}>
-              {editingId ? "Salvar alteracoes" : "Criar cliente"}
-            </Button>
-            {editingId && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setEditingId(null);
-                  form.reset(EMPTY_CLIENTE);
-                }}
-              >
-                Cancelar edicao
+            <div className="grid gap-2">
+              <Label htmlFor="cliente-telefone">Telefone</Label>
+              <Input id="cliente-telefone" {...form.register("telefone")} />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="cliente-email">E-mail</Label>
+              <Input id="cliente-email" {...form.register("email")} />
+              <FieldError message={form.formState.errors.email?.message} />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="cliente-observacoes">Observacoes</Label>
+              <Textarea
+                id="cliente-observacoes"
+                rows={3}
+                {...form.register("observacoes")}
+              />
+            </div>
+
+            {feedback ? (
+              <Alert variant={feedback.variant === "error" ? "destructive" : "default"}>
+                <AlertTitle>{feedback.variant === "error" ? "Falha" : "Atualizacao"}</AlertTitle>
+                <AlertDescription>{feedback.message}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={salvarMutation.isPending}>
+                {salvarMutation.isPending
+                  ? "Processando..."
+                  : editingId
+                    ? "Salvar alteracoes"
+                    : "Criar cliente"}
               </Button>
-            )}
-          </div>
-        </form>
+              {editingId ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEditingId(null);
+                    form.reset(EMPTY_CLIENTE);
+                  }}
+                >
+                  Cancelar edicao
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </CardContent>
       </Card>
 
-      <Card title="Clientes cadastrados">
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Documento</th>
-                <th>Contato</th>
-                <th>Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="border-border/80 bg-card/95 shadow-lg">
+        <CardHeader>
+          <CardTitle>Clientes cadastrados</CardTitle>
+          <CardDescription>Base ativa de clientes vinculados aos fluxos.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Documento</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead className="w-[130px]">Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {clientesQuery.data?.map((cliente) => (
-                <tr key={cliente.id}>
-                  <td>{cliente.nome}</td>
-                  <td>{cliente.documento || "-"}</td>
-                  <td>
-                    {cliente.email || "-"}
-                    <br />
-                    {cliente.telefone || "-"}
-                  </td>
-                  <td>
+                <TableRow key={cliente.id}>
+                  <TableCell className="font-semibold">{cliente.nome}</TableCell>
+                  <TableCell>{cliente.documento || "-"}</TableCell>
+                  <TableCell>
+                    <p>{cliente.email || "-"}</p>
+                    <p className="text-xs text-muted-foreground">{cliente.telefone || "-"}</p>
+                  </TableCell>
+                  <TableCell>
                     <Button
                       variant="secondary"
+                      size="sm"
                       onClick={() => {
                         setEditingId(cliente.id);
                         form.reset({
@@ -131,20 +201,21 @@ export function ClientesPage() {
                     >
                       Editar
                     </Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
 
-              {!clientesQuery.data?.length && (
-                <tr>
-                  <td colSpan={4}>Nenhum cliente cadastrado.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              {!clientesQuery.data?.length ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
+                    Nenhum cliente cadastrado.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );
 }
-
